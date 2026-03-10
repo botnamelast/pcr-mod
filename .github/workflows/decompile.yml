@@ -10,7 +10,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    # Rename .zip jadi tanpa ekstensi
     - name: Rename files
       shell: cmd
       run: |
@@ -20,7 +19,6 @@ jobs:
         echo Rename done!
         dir game.part*
     
-    # Gabung split files
     - name: Merge split files
       shell: cmd
       run: |
@@ -28,21 +26,17 @@ jobs:
         echo Merge done!
         dir game.droid
     
-    # Download UTMT CLI - URL DIPERBAIKI!
     - name: Download UTMT
       run: |
-        curl -L -o utmt.zip https://github.com/UnderminersTeam/UndertaleModTool/releases/latest/download/UTMT_CLI.zip
-        dir utmt.zip
+        curl -L -o utmt.zip https://github.com/UnderminersTeam/UndertaleModTool/releases/download/0.8.4.1/UTMT_CLI_v0.8.4.1-Windows.zip
         Expand-Archive utmt.zip -DestinationPath utmt/
         dir utmt/
     
-    # Jalankan decompile
     - name: Run Decompile
       run: |
         cd utmt
-        ./UndertaleModToolCLI.exe ../game.droid ../decompile.csx
+        ./UndertaleModCli.exe ../game.droid ../decompile.csx
     
-    # Upload hasil
     - name: Upload hasil
       uses: actions/upload-artifact@v4
       with:
