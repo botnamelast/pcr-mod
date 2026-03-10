@@ -268,14 +268,14 @@ jobs:
 
         java -jar apksigner.jar \
           --apks pcr_mod_unsigned.apk \
-          --ks mod.keystore \
-          --ks-pass pass:${{ secrets.KEYSTORE_PASS }} \
-          --ks-key-alias ${{ secrets.KEY_ALIAS }} \
-          --out pcr_mod_signed.apk
+          --ks 1=mod.keystore \
+          --ksPass 1=${{ secrets.KEYSTORE_PASS }} \
+          --ksAlias 1=${{ secrets.KEY_ALIAS }} \
+          --out output_signed/
 
         echo "=== APK Signed ==="
-        ls -lh pcr_mod_signed.apk
-
+        ls -lh output_signed/
+        
     - name: Upload APK Hasil
       uses: actions/upload-artifact@v4
       with:
