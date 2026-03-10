@@ -76,7 +76,8 @@ jobs:
 
         # Extract smali dari dex
         curl -L -o baksmali.jar \
-          "https://github.com/JesusFreke/smali/releases/download/v2.5.2/baksmali-2.5.2.jar"
+          "https://repo1.maven.org/maven2/org/smali/baksmali/2.5.2/baksmali-2.5.2.jar"
+        ls -lh baksmali.jar
         java -jar baksmali.jar d dex_output/classes.dex -o smali_output/
 
         echo "=== Smali output ==="
