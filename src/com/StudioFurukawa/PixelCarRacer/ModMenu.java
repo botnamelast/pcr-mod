@@ -92,22 +92,16 @@ public class ModMenu {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(0, 4, 0, 8);
 
-        // Icon game dari res/drawable/icon
+        // Icon dari assets/mod_logo.png
         ImageView icon = new ImageView(ctx);
         try {
             java.io.InputStream is = ctx.getAssets().open("mod_logo.png");
-            android.graphics.Bitmap bmp = 
+            android.graphics.Bitmap bmp =
                 android.graphics.BitmapFactory.decodeStream(is);
             icon.setImageBitmap(bmp);
             is.close();
         } catch (Exception e) {
-            // Fallback ke icon game
-            try {
-                icon.setImageDrawable(ctx.getResources()
-                    .getDrawable(R.drawable.icon));
-            } catch (Exception e2) {
-                e2.printStackTrace();
-            }
+            e.printStackTrace();
         }
         LinearLayout.LayoutParams iconLP =
             new LinearLayout.LayoutParams(44, 44);
