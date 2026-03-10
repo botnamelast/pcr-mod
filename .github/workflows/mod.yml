@@ -70,8 +70,13 @@ jobs:
         echo "=== DEX output ==="
         ls -lh dex_output/
 
+        # Wrap dex ke dummy APK baru decode pakai apktool
+        mkdir -p dummy_apk_dir/
+        cp dex_output/classes.dex dummy_apk_dir/
+        cd dummy_apk_dir && zip -r ../dummy.apk classes.dex && cd ..
+
         mkdir -p smali_output
-        apktool d dex_output/classes.dex \
+        apktool d dummy.apk \
           -o smali_output/ \
           --force \
           --no-res
