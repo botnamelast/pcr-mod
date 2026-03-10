@@ -1,67 +1,57 @@
-// decompile.csx - No prompt version!
+// decompile.csx - Assets only (YYC game)
+using System.IO.Compression;
+using System.Linq;
+
 string outputDir = Path.Combine(
     Directory.GetCurrentDirectory(), "output"
 );
-Directory.CreateDirectory(outputDir + "/code");
-Directory.CreateDirectory(outputDir + "/data");
+Directory.CreateDirectory(outputDir);
 
-// Export semua GML code (tanpa prompt folder)
-foreach (var code in Data.Code) {
-    try {
-        var name = code.Name.Content;
-        // Sanitize nama file
-        foreach (var c in Path.GetInvalidFileNameChars())
-            name = name.Replace(c, '_');
-            
-        var decompiled = new Decompiler(Data)
-            .Decompile(code, Data);
-        File.WriteAllText(
-            Path.Combine(outputDir, "code", name + ".gml"),
-            decompiled
-        );
-    } catch (Exception e) {
-        File.AppendAllText(
-            Path.Combine(outputDir, "errors.txt"),
-            $"{code.Name.Content}: {e.Message}\n"
-        );
-    }
-}
-
-// Export strings
-var strings = Data.Strings
-    .Select(s => s.Content)
-    .ToList();
-File.WriteAllLines(
-    Path.Combine(outputDir, "data", "strings.txt"), 
-    strings
+// 1. Info game
+File.WriteAllText(Path.Combine(outputDir, "info.txt"),
+    $"Game: {Data.GeneralInfo.DisplayName.Content}\n" +
+    $"GMS2: {Data.IsGameMaker2}\n" +
+    $"YYC: {Data.GeneralInfo.IsYYC}\n" +
+    $"Bytecode: {Data.GeneralInfo.BytecodeVersion}\n" +
+    $"Objects: {Data.GameObjects.Count}\n" +
+    $"Scripts: {Data.Code.Count}\n" +
+    $"Strings: {Data.Strings.Count}\n" +
+    $"Sounds: {Data.Sounds.Count}\n" +
+    $"Sprites: {Data.Sprites.Count}\n"
 );
 
-// Export variable names
-var vars = Data.Variables
-    .Select(v => $"{v.Name.Content} ({v.InstanceType})")
-    .ToList();
+// 2. Semua string
 File.WriteAllLines(
-    Path.Combine(outputDir, "data", "variables.txt"),
-    vars
+    Path.Combine(outputDir, "strings.txt"),
+    Data.Strings.Select(s => s.Content)
 );
 
-// Export object list + events
-var objLines = new List<string>();
-foreach (var obj in Data.GameObjects) {
-    objLines.Add($"\n=== {obj.Name.Content} ===");
-    foreach (var evList in obj.Events)
-        foreach (var ev in evList)
-            if (ev.CodeId != null)
-                objLines.Add($"  {ev.CodeId.Name.Content}");
-}
+// 3. Semua object names + sprite
 File.WriteAllLines(
-    Path.Combine(outputDir, "data", "objects.txt"),
-    objLines
+    Path.Combine(outputDir, "objects.txt"),
+    Data.GameObjects.Select(o => 
+        $"{o.Name.Content} | sprite={o.Sprite?.Name?.Content ?? "none"}"
+    )
+);
+
+// 4. Semua sound names
+File.WriteAllLines(
+    Path.Combine(outputDir, "sounds.txt"),
+    Data.Sounds.Select(s => s.Name.Content)
+);
+
+// 5. Semua sprite names
+File.WriteAllLines(
+    Path.Combine(outputDir, "sprites.txt"),
+    Data.Sprites.Select(s => s.Name.Content)
+);
+
+// 6. Semua room names
+File.WriteAllLines(
+    Path.Combine(outputDir, "rooms.txt"),
+    Data.Rooms.Select(r => r.Name.Content)
 );
 
 // Zip semua
-System.IO.Compression.ZipFile.CreateFromDirectory(
-    outputDir, "hasil_decompile.zip"
-);
-
+ZipFile.CreateFromDirectory(outputDir, "hasil_decompile.zip");
 Console.WriteLine("DONE! hasil_decompile.zip ready!");
