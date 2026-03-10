@@ -99,6 +99,13 @@ jobs:
         ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Mod*
         ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Auto*
         ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Memory*
+        
+    - name: Copy Assets Mod
+      run: |
+        # Copy mod_logo.png ke assets APK
+        cp assets/mod_logo.png pcr_decompiled/assets/
+        echo "=== Assets ter-copy ==="
+        ls pcr_decompiled/assets/ | grep mod
 
     - name: Patch DemoRenderer.smali
       run: |
@@ -215,4 +222,3 @@ jobs:
         name: PCR-Mod-APK
         path: pcr_mod_signed.apk
         retention-days: 7
-        
