@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     # Rename .zip jadi tanpa ekstensi
     - name: Rename files
@@ -41,9 +41,9 @@ jobs:
         cd utmt
         ./UndertaleModToolCLI.exe ../game.droid ../decompile.csx
     
-    # Upload hasil
+    # Upload hasil - GANTI KE V4!
     - name: Upload hasil
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: hasil-decompile
         path: utmt/hasil_decompile.zip
