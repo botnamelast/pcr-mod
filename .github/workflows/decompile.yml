@@ -31,7 +31,7 @@ jobs:
     - name: Run Decompile
       run: |
         cd utmt
-        ./UndertaleModCli.exe load ../game.droid --script ../decompile.csx
+        ./UndertaleModCli.exe load ../game.droid --scripts ../decompile.csx
     
     - name: Upload hasil
       uses: actions/upload-artifact@v4
