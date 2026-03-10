@@ -1,3 +1,7 @@
+#r "System.IO.Compression.dll"
+#r "System.IO.Compression.FileSystem.dll"
+
+using System.IO;
 using System.IO.Compression;
 using System.Linq;
 
@@ -56,5 +60,8 @@ File.WriteAllLines(
 Console.WriteLine("Rooms written!");
 
 // Zip
-ZipFile.CreateFromDirectory(outputDir, "hasil_decompile.zip");
-Console.WriteLine("DONE! ZIP created!");
+string zipPath = Path.Combine(
+    Directory.GetCurrentDirectory(), "hasil_decompile.zip"
+);
+ZipFile.CreateFromDirectory(outputDir, zipPath);
+Console.WriteLine($"DONE! ZIP created at: {zipPath}");
