@@ -262,15 +262,25 @@ jobs:
     - name: Sign APK
       run: |
         echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > mod.keystore
+        
+        # Debug cek keystore
+        ls -lh mod.keystore
+        file mod.keystore
+
+    - name: Sign APK
+      run: |
+        echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > mod.keystore
+        ls -lh mod.keystore
 
         curl -L -o apksigner.jar \
           "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar"
 
+        mkdir -p output_signed
         java -jar apksigner.jar \
           --apks pcr_mod_unsigned.apk \
-          --ks 1=mod.keystore \
-          --ksPass 1=${{ secrets.KEYSTORE_PASS }} \
-          --ksAlias 1=${{ secrets.KEY_ALIAS }} \
+          --ks mod.keystore \
+          --ksPass ${{ secrets.KEYSTORE_PASS }} \
+          --ksAlias ${{ secrets.KEY_ALIAS }} \
           --out output_signed/
 
         echo "=== APK Signed ==="
