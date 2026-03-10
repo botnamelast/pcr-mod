@@ -14,7 +14,7 @@ jobs:
       run: |
         curl -L -o pcr.apk https://github.com/botnamelast/pcr-mod/releases/download/kontol/pcr.apk.zip
 
-    - name: Install Java + APKTool
+    - name: Setup Java + APKTool
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
@@ -33,13 +33,15 @@ jobs:
       run: |
         apktool d pcr.apk -o pcr_decompiled/ --force
 
-    - name: Cek RunnerActivity
+    - name: Zip smali PCR
       run: |
-        cat pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/RunnerActivity.smali
+        cd pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
+        zip -r /tmp/pcr_smali.zip .
+        ls -lh /tmp/pcr_smali.zip
 
-    - name: Upload RunnerActivity
+    - name: Upload smali zip
       uses: actions/upload-artifact@v4
       with:
-        name: runner-activity
-        path: pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
+        name: pcr-smali
+        path: /tmp/pcr_smali.zip
         retention-days: 7
