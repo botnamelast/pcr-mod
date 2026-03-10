@@ -12,31 +12,37 @@ jobs:
 
     - name: Download APK
       run: |
-        curl -L -o pcr.apk.zip https://github.com/botnamelast/pcr-mod/releases/download/kontol/pcr.apk.zip
-        mv pcr.apk.zip pcr.apk
+        curl -L -o pcr.apk https://github.com/botnamelast/pcr-mod/releases/download/kontol/pcr.apk.zip
+        file pcr.apk
         ls -lh pcr.apk
 
-    - name: Install Java + APKTool
+    - name: Install Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install APKTool
       run: |
-        sudo apt-get install -y default-jdk
-        wget -q https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool
-        wget -q https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar
+        curl -L -o apktool.jar https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar
+        echo '#!/bin/bash' > apktool
+        echo 'java -jar /usr/local/bin/apktool.jar "$@"' >> apktool
         chmod +x apktool
         sudo mv apktool /usr/local/bin/
-        sudo mv apktool_2.9.3.jar /usr/local/bin/apktool.jar
+        sudo mv apktool.jar /usr/local/bin/
         apktool --version
 
     - name: Decompile APK
       run: |
-        apktool d pcr.apk -o pcr_decompiled/
+        apktool d pcr.apk -o pcr_decompiled/ --force
         echo "=== Root ==="
         ls pcr_decompiled/
         echo "=== Smali ==="
-        ls pcr_decompiled/smali/
+        ls pcr_decompiled/smali/ || echo "No smali folder"
         echo "=== Assets ==="
         ls pcr_decompiled/assets/
         echo "=== Lib ==="
-        ls pcr_decompiled/lib/
+        ls pcr_decompiled/lib/ || echo "No lib folder"
 
     - name: Upload hasil decompile
       uses: actions/upload-artifact@v4
