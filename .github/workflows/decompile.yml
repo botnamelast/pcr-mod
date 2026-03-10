@@ -25,6 +25,11 @@ jobs:
       run: |
         git clone --recurse-submodules https://github.com/UnderminersTeam/UndertaleModTool.git utmt-src
 
+    # Lihat source yang crash dulu!
+    - name: Print source line 120-135
+      run: |
+        Get-Content utmt-src/UndertaleModLib/UndertaleChunks.cs | Select-Object -Index (115..140)
+
     - name: Build UTMT CLI
       run: |
         cd utmt-src
@@ -34,12 +39,6 @@ jobs:
       run: |
         cd utmt-build
         ./UndertaleModCli.exe info ../game.droid
-      continue-on-error: true
-
-    - name: Run Decompile
-      run: |
-        cd utmt-build
-        ./UndertaleModCli.exe load ../game.droid --scripts ../decompile.csx
       continue-on-error: true
 
     - name: Upload hasil
