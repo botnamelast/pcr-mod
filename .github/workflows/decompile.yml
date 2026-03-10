@@ -12,7 +12,7 @@ jobs:
 
     - name: Download game.droid
       run: |
-        curl -L -o game.droid.zip https://github.com/botnamelast/pcr-mod/releases/download/kontol/game_patched.droid.zip
+        curl -L -o game.droid.zip https://github.com/botnamelast/pcr-mod/releases/download/kontol/game.droid.zip
         Move-Item game.droid.zip game.droid
         dir game.droid
 
@@ -25,20 +25,35 @@ jobs:
       run: |
         git clone --recurse-submodules https://github.com/UnderminersTeam/UndertaleModTool.git utmt-src
 
-    # Lihat source yang crash dulu!
-    - name: Print source line 120-135
+    # Patch UTMT - tambah debug info saat crash
+    - name: Patch UTMT source
       run: |
-        Get-Content utmt-src/UndertaleModLib/UndertaleChunks.cs | Select-Object -Index (115..140)
+        $file = "utmt-src/UndertaleModLib/UndertaleChunks.cs"
+        $content = Get-Content $file -Raw
+        
+        # Tambah verbose logging di loop chunk scanner
+        $old = 'lastChunk = reader.ReadChars(4);'
+        $new = 'lastChunk = reader.ReadChars(4); Console.WriteLine($"Scanning chunk: {lastChunk} at pos {reader.Position}");'
+        
+        $content = $content.Replace($old, $new)
+        Set-Content $file $content
+        echo "Patched!"
 
     - name: Build UTMT CLI
       run: |
         cd utmt-src
         dotnet publish UndertaleModCli -c Release -o ../utmt-build
 
-    - name: Test info
+    - name: Test info verbose
       run: |
         cd utmt-build
         ./UndertaleModCli.exe info ../game.droid
+      continue-on-error: true
+
+    - name: Run Decompile
+      run: |
+        cd utmt-build
+        ./UndertaleModCli.exe load ../game.droid --scripts ../decompile.csx
       continue-on-error: true
 
     - name: Upload hasil
