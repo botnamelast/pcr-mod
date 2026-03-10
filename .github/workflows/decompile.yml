@@ -27,7 +27,13 @@ jobs:
       run: |
         curl -L -o utmt.zip https://github.com/UnderminersTeam/UndertaleModTool/releases/download/0.8.4.1/UTMT_CLI_v0.8.4.1-Windows.zip
         Expand-Archive utmt.zip -DestinationPath utmt/
-    
+
+    # Test info dulu tanpa script
+    - name: Test info
+      run: |
+        cd utmt
+        ./UndertaleModCli.exe info ../game.droid
+
     - name: Run Decompile
       run: |
         cd utmt
