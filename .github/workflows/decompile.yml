@@ -16,26 +16,22 @@ jobs:
         rename game.partaa.zip game.partaa
         rename game.partab.zip game.partab
         rename game.partac.zip game.partac
-        echo Rename done!
-        dir game.part*
     
     - name: Merge split files
       shell: cmd
       run: |
         copy /b game.partaa+game.partab+game.partac game.droid
-        echo Merge done!
         dir game.droid
     
     - name: Download UTMT
       run: |
         curl -L -o utmt.zip https://github.com/UnderminersTeam/UndertaleModTool/releases/download/0.8.4.1/UTMT_CLI_v0.8.4.1-Windows.zip
         Expand-Archive utmt.zip -DestinationPath utmt/
-        dir utmt/
     
     - name: Run Decompile
       run: |
         cd utmt
-        ./UndertaleModCli.exe ../game.droid ../decompile.csx
+        ./UndertaleModCli.exe load ../game.droid --script ../decompile.csx
     
     - name: Upload hasil
       uses: actions/upload-artifact@v4
