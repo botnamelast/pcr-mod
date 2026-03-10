@@ -44,6 +44,23 @@ jobs:
         echo "=== Lib ==="
         ls pcr_decompiled/lib/ || echo "No lib folder"
 
+    - name: Cek struktur smali
+      run: |
+        echo "=== Smali folders ==="
+        ls pcr_decompiled/smali/
+        echo ""
+        echo "=== Smali count ==="
+        find pcr_decompiled/smali/ -name "*.smali" | wc -l
+        echo ""
+        echo "=== Cek MainActivity ==="
+        find pcr_decompiled/ -name "MainActivity.smali"
+        echo ""
+        echo "=== Cek GameActivity ==="
+        find pcr_decompiled/ -name "*Activity*.smali"
+        echo ""
+        echo "=== AndroidManifest ==="
+        cat pcr_decompiled/AndroidManifest.xml
+
     - name: Upload hasil decompile
       uses: actions/upload-artifact@v4
       with:
