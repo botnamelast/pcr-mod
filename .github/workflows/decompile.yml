@@ -1,0 +1,39 @@
+name: Decompile PCR
+
+on: [push]
+
+jobs:
+  decompile:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    # Gabung split files
+    - name: Merge split files
+      shell: cmd
+      run: |
+        copy /b game.partaa+game.partab+game.partac game.droid
+        echo Merge done!
+        dir game.droid
+    
+    # Download UTMT CLI
+    - name: Download UTMT
+      run: |
+        curl -L -o utmt.zip https://github.com/UndermineDev/UndertaleModTool/releases/latest/download/UndertaleModToolCLI.zip
+        Expand-Archive utmt.zip -DestinationPath utmt/
+        dir utmt/
+    
+    # Jalankan decompile
+    - name: Run Decompile
+      run: |
+        cd utmt
+        ./UndertaleModToolCLI.exe ../game.droid ../decompile.csx
+    
+    # Upload zip sebagai artifact
+    - name: Upload hasil
+      uses: actions/upload-artifact@v3
+      with:
+        name: hasil-decompile
+        path: utmt/hasil_decompile.zip
+        retention-days: 7
