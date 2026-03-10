@@ -95,10 +95,19 @@ public class ModMenu {
         // Icon game dari res/drawable/icon
         ImageView icon = new ImageView(ctx);
         try {
-            icon.setImageDrawable(ctx.getResources()
-                .getDrawable(R.drawable.icon));
+            java.io.InputStream is = ctx.getAssets().open("mod_logo.png");
+            android.graphics.Bitmap bmp = 
+                android.graphics.BitmapFactory.decodeStream(is);
+            icon.setImageBitmap(bmp);
+            is.close();
         } catch (Exception e) {
-            // Fallback kalau icon tidak ada
+            // Fallback ke icon game
+            try {
+                icon.setImageDrawable(ctx.getResources()
+                    .getDrawable(R.drawable.icon));
+            } catch (Exception e2) {
+                e2.printStackTrace();
+            }
         }
         LinearLayout.LayoutParams iconLP =
             new LinearLayout.LayoutParams(44, 44);
