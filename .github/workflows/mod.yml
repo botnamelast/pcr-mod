@@ -40,11 +40,9 @@ jobs:
 
     - name: Compile Java Mod Files
       run: |
-        # Download android.jar untuk compile
         curl -L -o android.jar \
           "https://github.com/Reginer/aosp-android-jar/raw/main/android-33/android.jar"
 
-        # Compile semua file Java mod
         mkdir -p compiled_classes
         javac -source 8 -target 8 \
           -cp android.jar \
@@ -58,13 +56,11 @@ jobs:
 
     - name: Convert Class ke DEX ke Smali
       run: |
-        # Download d8
         curl -L -o build-tools.zip \
           "https://dl.google.com/android/repository/build-tools_r34-linux.zip"
         unzip -q build-tools.zip -d build-tools/
         chmod +x build-tools/android-14/d8
 
-        # Convert .class ke .dex
         mkdir -p dex_output
         find compiled_classes -name "*.class" | xargs \
           build-tools/android-14/d8 \
@@ -74,18 +70,17 @@ jobs:
         echo "=== DEX output ==="
         ls -lh dex_output/
 
-        # Extract smali dari dex
-        curl -L -o baksmali.jar \
-          "https://repo1.maven.org/maven2/org/smali/baksmali/2.5.2/baksmali-2.5.2.jar"
-        ls -lh baksmali.jar
-        java -jar baksmali.jar d dex_output/classes.dex -o smali_output/
+        mkdir -p smali_output
+        apktool d dex_output/classes.dex \
+          -o smali_output/ \
+          --force \
+          --no-res
 
         echo "=== Smali output ==="
         find smali_output -name "*.smali"
 
     - name: Inject Smali Ke APK
       run: |
-        # Copy smali mod ke folder APK
         cp smali_output/com/StudioFurukawa/PixelCarRacer/ModMenu*.smali \
           pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
         cp smali_output/com/StudioFurukawa/PixelCarRacer/AutoShift*.smali \
@@ -93,7 +88,6 @@ jobs:
         cp smali_output/com/StudioFurukawa/PixelCarRacer/MemoryUtils*.smali \
           pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
 
-        # Copy mod_logo.png ke assets APK
         cp assets/mod_logo.png pcr_decompiled/assets/
 
         echo "=== File ter-inject ==="
@@ -114,7 +108,6 @@ jobs:
 
         inject = "\n    # === PCR MOD: AutoShift tick ===\n    invoke-static {}, Lcom/StudioFurukawa/PixelCarRacer/AutoShift;->tick()V\n    # === END PCR MOD ===\n"
 
-        # Cari :cond_3 yang ke-2 (setelah pause check)
         target = "    :cond_3"
         occurrences = [m.start() for m in re.finditer(re.escape(target), content)]
         print(f"Found :cond_3 at {len(occurrences)} tempat: {[hex(o) for o in occurrences]}")
@@ -175,14 +168,11 @@ jobs:
 
     - name: Sign APK
       run: |
-        # Decode keystore dari GitHub Secrets
         echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > mod.keystore
 
-        # Download uber-apk-signer
         curl -L -o apksigner.jar \
           "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar"
 
-        # Sign APK
         java -jar apksigner.jar \
           --apks pcr_mod_unsigned.apk \
           --ks mod.keystore \
