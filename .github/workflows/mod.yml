@@ -40,9 +40,6 @@ jobs:
 
     - name: Compile Java Mod Files
       run: |
-        # Siapkan Android SDK stubs untuk compile
-        mkdir -p android_stubs
-
         # Download android.jar untuk compile
         curl -L -o android.jar \
           "https://github.com/Reginer/aosp-android-jar/raw/main/android-33/android.jar"
@@ -61,7 +58,7 @@ jobs:
 
     - name: Convert Class ke DEX ke Smali
       run: |
-        # Pakai d8 dari Android build tools
+        # Download d8
         curl -L -o build-tools.zip \
           "https://dl.google.com/android/repository/build-tools_r34-linux.zip"
         unzip -q build-tools.zip -d build-tools/
@@ -87,90 +84,76 @@ jobs:
 
     - name: Inject Smali Ke APK
       run: |
-        # Copy smali mod ke folder APK yang sudah didecompile
-        cp -r smali_output/com/StudioFurukawa/PixelCarRacer/ModMenu*.smali \
+        # Copy smali mod ke folder APK
+        cp smali_output/com/StudioFurukawa/PixelCarRacer/ModMenu*.smali \
           pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
-        cp -r smali_output/com/StudioFurukawa/PixelCarRacer/AutoShift*.smali \
+        cp smali_output/com/StudioFurukawa/PixelCarRacer/AutoShift*.smali \
           pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
-        cp -r smali_output/com/StudioFurukawa/PixelCarRacer/MemoryUtils*.smali \
+        cp smali_output/com/StudioFurukawa/PixelCarRacer/MemoryUtils*.smali \
           pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
 
-        echo "=== File smali ter-inject ==="
+        # Copy mod_logo.png ke assets APK
+        cp assets/mod_logo.png pcr_decompiled/assets/
+
+        echo "=== File ter-inject ==="
         ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Mod*
         ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Auto*
         ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Memory*
-        
-    - name: Copy Assets Mod
-      run: |
-        # Copy mod_logo.png ke assets APK
-        cp assets/mod_logo.png pcr_decompiled/assets/
-        echo "=== Assets ter-copy ==="
+        echo "=== Assets ==="
         ls pcr_decompiled/assets/ | grep mod
 
     - name: Patch DemoRenderer.smali
       run: |
-        DEMO="pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/DemoRenderer.smali"
-
-        # Inject AutoShift.tick() setelah :cond_3
         python3 << 'PYEOF'
         import re
 
-        with open("pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/DemoRenderer.smali", "r") as f:
+        path = "pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/DemoRenderer.smali"
+        with open(path, "r") as f:
             content = f.read()
 
-        inject = """
-            # === PCR MOD: AutoShift tick ===
-            invoke-static {}, Lcom/StudioFurukawa/PixelCarRacer/AutoShift;->tick()V
-            # === END PCR MOD ===
-        """
+        inject = "\n    # === PCR MOD: AutoShift tick ===\n    invoke-static {}, Lcom/StudioFurukawa/PixelCarRacer/AutoShift;->tick()V\n    # === END PCR MOD ===\n"
 
-        # Cari target inject point
-        target = "    .line 400\n    :cond_3"
-        if target in content:
-            content = content.replace(target, target + inject)
+        # Cari :cond_3 yang ke-2 (setelah pause check)
+        target = "    :cond_3"
+        occurrences = [m.start() for m in re.finditer(re.escape(target), content)]
+        print(f"Found :cond_3 at {len(occurrences)} tempat: {[hex(o) for o in occurrences]}")
+
+        if len(occurrences) >= 2:
+            pos = occurrences[1]
+            content = content[:pos + len(target)] + inject + content[pos + len(target):]
             print("✅ DemoRenderer patch berhasil!")
+        elif len(occurrences) == 1:
+            pos = occurrences[0]
+            content = content[:pos + len(target)] + inject + content[pos + len(target):]
+            print("✅ DemoRenderer patch berhasil (single cond_3)!")
         else:
-            # Coba cari :cond_3 saja
-            target2 = "    :cond_3"
-            occurrences = [m.start() for m in re.finditer(re.escape(target2), content)]
-            print(f"Found :cond_3 at positions: {occurrences}")
-            if len(occurrences) >= 2:
-                # Ambil yang ke-2 (setelah pause check)
-                pos = occurrences[1]
-                content = content[:pos + len(target2)] + inject + content[pos + len(target2):]
-                print("✅ DemoRenderer patch berhasil (fallback)!")
-            else:
-                print("❌ Target inject point tidak ditemukan!")
+            print("❌ :cond_3 tidak ditemukan!")
 
-        with open("pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/DemoRenderer.smali", "w") as f:
+        with open(path, "w") as f:
             f.write(content)
         PYEOF
 
     - name: Patch RunnerActivity.smali
       run: |
         python3 << 'PYEOF'
-        with open("pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/RunnerActivity.smali", "r") as f:
+        path = "pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/RunnerActivity.smali"
+        with open(path, "r") as f:
             content = f.read()
 
         target = "    sput-object p0, Lcom/StudioFurukawa/PixelCarRacer/RunnerActivity;->CurrentActivity:Lcom/StudioFurukawa/PixelCarRacer/RunnerActivity;"
 
-        inject = """
-            # === PCR MOD: Attach ModMenu ===
-            invoke-static {p0}, Lcom/StudioFurukawa/PixelCarRacer/ModMenu;->attach(Landroid/content/Context;)V
-            # === END PCR MOD ===
-        """
+        inject = "\n    # === PCR MOD: Attach ModMenu ===\n    invoke-static {p0}, Lcom/StudioFurukawa/PixelCarRacer/ModMenu;->attach(Landroid/content/Context;)V\n    # === END PCR MOD ===\n"
 
         if target in content:
-            content = content.replace(target, target + inject)
+            content = content.replace(target, target + inject, 1)
             print("✅ RunnerActivity patch berhasil!")
         else:
-            print("❌ Target inject point tidak ditemukan!")
-            # Print sekitar area yang dicari untuk debug
+            print("❌ Target tidak ditemukan! Cari context:")
             idx = content.find("CurrentActivity")
             if idx != -1:
-                print("Context:", content[idx-100:idx+200])
+                print(content[idx-200:idx+300])
 
-        with open("pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/RunnerActivity.smali", "w") as f:
+        with open(path, "w") as f:
             f.write(content)
         PYEOF
 
@@ -191,29 +174,22 @@ jobs:
 
     - name: Sign APK
       run: |
-        # Generate keystore
-        keytool -genkeypair \
-          -keystore mod.keystore \
-          -alias modkey \
-          -keyalg RSA \
-          -keysize 2048 \
-          -validity 10000 \
-          -storepass modpass \
-          -keypass modpass \
-          -dname "CN=PCRMod, OU=Mod, O=PCRMod, L=ID, S=ID, C=ID" \
-          -noprompt
+        # Decode keystore dari GitHub Secrets
+        echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > mod.keystore
 
-        # Sign dengan apksigner
+        # Download uber-apk-signer
         curl -L -o apksigner.jar \
           "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar"
 
+        # Sign APK
         java -jar apksigner.jar \
           --apks pcr_mod_unsigned.apk \
           --ks mod.keystore \
-          --ks-pass pass:modpass \
-          --ks-key-alias modkey \
+          --ks-pass pass:${{ secrets.KEYSTORE_PASS }} \
+          --ks-key-alias ${{ secrets.KEY_ALIAS }} \
           --out pcr_mod_signed.apk
 
+        echo "=== APK Signed ==="
         ls -lh pcr_mod_signed.apk
 
     - name: Upload APK Hasil
@@ -222,3 +198,4 @@ jobs:
         name: PCR-Mod-APK
         path: pcr_mod_signed.apk
         retention-days: 7
+        
