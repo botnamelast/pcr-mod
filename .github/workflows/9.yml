@@ -1,0 +1,36 @@
+name: Mod PCR APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mod:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download APK
+      run: |
+        curl -L -o pcr.apk.zip https://github.com/botnamelast/pcr-mod/releases/download/kontol/pcr.apk.zip
+        mv pcr.apk.zip pcr.apk
+
+    - name: Install APKTool
+      run: |
+        wget -q https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool
+        wget -q https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar
+        chmod +x apktool
+        sudo mv apktool /usr/local/bin/
+        sudo mv apktool_2.9.3.jar /usr/local/bin/apktool.jar
+
+    - name: Decompile APK
+      run: |
+        apktool d pcr.apk -o pcr_decompiled/
+        ls pcr_decompiled/
+
+    - name: Upload smali
+      uses: actions/upload-artifact@v4
+      with:
+        name: pcr-smali
+        path: pcr_decompiled/
+        retention-days: 7
