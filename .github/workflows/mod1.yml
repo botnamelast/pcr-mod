@@ -280,9 +280,10 @@ jobs:
           --apks pcr_mod_unsigned.apk \
           --ks mod.keystore \
           --ksPass ${{ secrets.KEYSTORE_PASS }} \
+          --ksKeyPass ${{ secrets.KEYSTORE_PASS }} \
           --ksAlias ${{ secrets.KEY_ALIAS }} \
           --out output_signed/
-
+          
         echo "=== APK Signed ==="
         ls -lh output_signed/
         
