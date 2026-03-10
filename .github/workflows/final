@@ -1,0 +1,304 @@
+name: 🔥🔥👿👿🔥🔥
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  # =============================
+  # JOB 1: Compile Java → DEX
+  # =============================
+  generate-dex:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Compile Java Mod Files
+      run: |
+        curl -L -o android.jar \
+          "https://github.com/Reginer/aosp-android-jar/raw/main/android-33/android.jar"
+
+        mkdir -p compiled_classes
+        javac -source 8 -target 8 \
+          -cp android.jar \
+          -d compiled_classes \
+          src/com/StudioFurukawa/PixelCarRacer/MemoryUtils.java \
+          src/com/StudioFurukawa/PixelCarRacer/AutoShift.java \
+          src/com/StudioFurukawa/PixelCarRacer/ModMenu.java
+
+        echo "=== Compile selesai ==="
+        find compiled_classes -name "*.class"
+
+    - name: Convert Class ke DEX
+      run: |
+        curl -L -o build-tools.zip \
+          "https://dl.google.com/android/repository/build-tools_r34-linux.zip"
+        unzip -q build-tools.zip -d build-tools/
+        chmod +x build-tools/android-14/d8
+
+        mkdir -p dex_output
+        find compiled_classes -name "*.class" | xargs \
+          build-tools/android-14/d8 \
+          --output dex_output/ \
+          --min-api 21
+
+        echo "=== DEX output ==="
+        ls -lh dex_output/
+
+    - name: Upload DEX Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mod-dex
+        path: dex_output/classes.dex
+        retention-days: 1
+
+  # =============================
+  # JOB 2: DEX → Smali
+  # =============================
+  dex-to-smali:
+    needs: generate-dex
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup Java 11
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: Download DEX Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: mod-dex
+        path: dex_output/
+
+    - name: Cek DEX
+      run: |
+        ls -lh dex_output/
+        file dex_output/classes.dex
+
+    - name: Download smali Source
+      run: |
+        curl -L -o smali.zip \
+          "https://github.com/JesusFreke/smali/archive/refs/tags/v2.5.2.zip"
+        unzip -q smali.zip
+        ls smali-2.5.2/
+
+    - name: Build baksmali
+      run: |
+        cd smali-2.5.2
+        chmod +x gradlew
+        ./gradlew :util:jar -x test
+        ./gradlew :dexlib2:jar -x test
+        ./gradlew :baksmali:fatJar -x test
+        echo "=== Hasil build ==="
+        ls baksmali/build/libs/
+
+    - name: Convert DEX ke Smali
+      run: |
+        JAR=$(find smali-2.5.2/baksmali/build/libs/ -name "*all*.jar" -o -name "*fat*.jar" | head -1)
+        if [ -z "$JAR" ]; then
+          JAR=$(find smali-2.5.2/baksmali/build/libs/ -name "*.jar" | grep -v javadoc | grep -v sources | head -1)
+        fi
+        echo "Pakai JAR: $JAR"
+        ls -lh $JAR
+
+        mkdir -p smali_output
+        java -jar $JAR d dex_output/classes.dex -o smali_output/
+
+        echo "=== Smali output ==="
+        find smali_output -name "*.smali"
+
+    - name: Upload Smali Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mod-smali
+        path: smali_output/
+        retention-days: 1
+
+  # =============================
+  # JOB 3: Inject + Build APK
+  # =============================
+  build-apk:
+    needs: dex-to-smali
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install APKTool
+      run: |
+        curl -L -o apktool.jar https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar
+        echo '#!/bin/bash' > apktool.sh
+        echo 'java -jar /usr/local/bin/apktool.jar "$@"' >> apktool.sh
+        chmod +x apktool.sh
+        sudo mv apktool.sh /usr/local/bin/apktool
+        sudo mv apktool.jar /usr/local/bin/
+        apktool --version
+
+    - name: Download Build Tools
+      run: |
+        curl -L -o build-tools.zip \
+          "https://dl.google.com/android/repository/build-tools_r34-linux.zip"
+        unzip -q build-tools.zip -d build-tools/
+        chmod +x build-tools/android-14/zipalign
+        chmod +x build-tools/android-14/apksigner
+
+    - name: Download Smali Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: mod-smali
+        path: smali_output/
+
+    - name: Cek Smali
+      run: |
+        echo "=== Smali files ==="
+        find smali_output -name "*.smali"
+
+    - name: Download APK
+      run: |
+        curl -L -o pcr.apk \
+          "https://github.com/botnamelast/pcr-mod/releases/download/kontol/pcr.apk.zip"
+        file pcr.apk
+        ls -lh pcr.apk
+
+    - name: Decompile APK
+      run: |
+        apktool d pcr.apk -o pcr_decompiled/ --force
+        echo "=== Decompile selesai ==="
+        ls pcr_decompiled/
+
+    - name: Inject Smali Ke APK
+      run: |
+        SMALI_DIR=$(find smali_output -type d -name "PixelCarRacer" | head -1)
+        echo "Smali dir: $SMALI_DIR"
+
+        cp $SMALI_DIR/ModMenu*.smali \
+          pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
+        cp $SMALI_DIR/AutoShift*.smali \
+          pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
+        cp $SMALI_DIR/MemoryUtils*.smali \
+          pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
+
+        cp assets/mod_logo.png pcr_decompiled/assets/
+
+        echo "=== File ter-inject ==="
+        ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Mod*
+        ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Auto*
+        ls pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/Memory*
+        echo "=== Assets ==="
+        ls pcr_decompiled/assets/ | grep mod
+
+    - name: Patch DemoRenderer.smali
+      run: |
+        python3 << 'PYEOF'
+        import re
+
+        path = "pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/DemoRenderer.smali"
+        with open(path, "r") as f:
+            content = f.read()
+
+        inject = "\n    # === PCR MOD: AutoShift tick ===\n    invoke-static {}, Lcom/StudioFurukawa/PixelCarRacer/AutoShift;->tick()V\n    # === END PCR MOD ===\n"
+
+        target = "    :cond_3"
+        occurrences = [m.start() for m in re.finditer(re.escape(target), content)]
+        print(f"Found :cond_3 at {len(occurrences)} tempat: {[hex(o) for o in occurrences]}")
+
+        if len(occurrences) >= 2:
+            pos = occurrences[1]
+            content = content[:pos + len(target)] + inject + content[pos + len(target):]
+            print("✅ DemoRenderer patch berhasil!")
+        elif len(occurrences) == 1:
+            pos = occurrences[0]
+            content = content[:pos + len(target)] + inject + content[pos + len(target):]
+            print("✅ DemoRenderer patch berhasil (single cond_3)!")
+        else:
+            print("❌ :cond_3 tidak ditemukan!")
+
+        with open(path, "w") as f:
+            f.write(content)
+        PYEOF
+
+    - name: Patch RunnerActivity.smali
+      run: |
+        python3 << 'PYEOF'
+        path = "pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/RunnerActivity.smali"
+        with open(path, "r") as f:
+            content = f.read()
+
+        target = "    sput-object p0, Lcom/StudioFurukawa/PixelCarRacer/RunnerActivity;->CurrentActivity:Lcom/StudioFurukawa/PixelCarRacer/RunnerActivity;"
+
+        inject = "\n    # === PCR MOD: Attach ModMenu ===\n    invoke-static {p0}, Lcom/StudioFurukawa/PixelCarRacer/ModMenu;->attach(Landroid/content/Context;)V\n    # === END PCR MOD ===\n"
+
+        if target in content:
+            content = content.replace(target, target + inject, 1)
+            print("✅ RunnerActivity patch berhasil!")
+        else:
+            print("❌ Target tidak ditemukan! Cari context:")
+            idx = content.find("CurrentActivity")
+            if idx != -1:
+                print(content[idx-200:idx+300])
+
+        with open(path, "w") as f:
+            f.write(content)
+        PYEOF
+
+    - name: Verify Patches
+      run: |
+        echo "=== Cek DemoRenderer patch ==="
+        grep -n "PCR MOD\|AutoShift" \
+          pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/DemoRenderer.smali
+
+        echo "=== Cek RunnerActivity patch ==="
+        grep -n "PCR MOD\|ModMenu" \
+          pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/RunnerActivity.smali
+
+    - name: Recompile APK
+      run: |
+        apktool b pcr_decompiled/ \
+          -o pcr_mod_unsigned.apk \
+          --use-aapt2
+        ls -lh pcr_mod_unsigned.apk
+
+    - name: Zipalign APK
+      run: |
+        build-tools/android-14/zipalign -v -p 4 \
+          pcr_mod_unsigned.apk \
+          pcr_mod_aligned.apk
+        ls -lh pcr_mod_aligned.apk
+
+    - name: Sign APK
+      run: |
+        echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > mod.keystore
+        ls -lh mod.keystore
+
+        build-tools/android-14/apksigner sign \
+          --ks mod.keystore \
+          --ks-pass pass:${{ secrets.KEYSTORE_PASS }} \
+          --ks-key-alias ${{ secrets.KEY_ALIAS }} \
+          --key-pass pass:${{ secrets.KEYSTORE_PASS }} \
+          --out pcr_mod_signed.apk \
+          pcr_mod_aligned.apk
+
+        echo "=== APK Signed ==="
+        ls -lh pcr_mod_signed.apk
+
+    - name: Upload APK Hasil
+      uses: actions/upload-artifact@v4
+      with:
+        name: PCR-Mod-APK
+        path: pcr_mod_signed.apk
+        retention-days: 7
