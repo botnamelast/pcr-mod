@@ -1,77 +1,67 @@
-using System.IO.Compression;
+// decompile.csx - No prompt version!
+string outputDir = Path.Combine(
+    Directory.GetCurrentDirectory(), "output"
+);
+Directory.CreateDirectory(outputDir + "/code");
+Directory.CreateDirectory(outputDir + "/data");
 
-// Buat folder output
-Directory.CreateDirectory("output/scripts");
-Directory.CreateDirectory("output/data");
-
-Console.WriteLine("Exporting scripts...");
-
-// 1. Semua GML Scripts (decompiled)
-int scriptCount = 0;
+// Export semua GML code (tanpa prompt folder)
 foreach (var code in Data.Code) {
     try {
         var name = code.Name.Content;
-        var decompiled = new Decompiler(Data).Decompile(code);
-        File.WriteAllText($"output/scripts/{name}.gml", decompiled);
-        scriptCount++;
+        // Sanitize nama file
+        foreach (var c in Path.GetInvalidFileNameChars())
+            name = name.Replace(c, '_');
+            
+        var decompiled = new Decompiler(Data)
+            .Decompile(code, Data);
+        File.WriteAllText(
+            Path.Combine(outputDir, "code", name + ".gml"),
+            decompiled
+        );
     } catch (Exception e) {
-        File.WriteAllText($"output/scripts/{code.Name.Content}_ERROR.txt", e.Message);
+        File.AppendAllText(
+            Path.Combine(outputDir, "errors.txt"),
+            $"{code.Name.Content}: {e.Message}\n"
+        );
     }
 }
-Console.WriteLine($"Scripts: {scriptCount} exported");
 
-// 2. Variables
-Console.WriteLine("Exporting variables...");
-var vars = Data.Variables.Select(v => 
-    $"{v.Name.Content} | InstanceType: {v.InstanceType}");
-File.WriteAllLines("output/data/variables.txt", vars);
+// Export strings
+var strings = Data.Strings
+    .Select(s => s.Content)
+    .ToList();
+File.WriteAllLines(
+    Path.Combine(outputDir, "data", "strings.txt"), 
+    strings
+);
 
-// 3. Objects + Events
-Console.WriteLine("Exporting objects...");
-var objList = new List<string>();
+// Export variable names
+var vars = Data.Variables
+    .Select(v => $"{v.Name.Content} ({v.InstanceType})")
+    .ToList();
+File.WriteAllLines(
+    Path.Combine(outputDir, "data", "variables.txt"),
+    vars
+);
+
+// Export object list + events
+var objLines = new List<string>();
 foreach (var obj in Data.GameObjects) {
-    objList.Add($"\n=== {obj.Name.Content} ===");
-    foreach (var ev in obj.Events) {
-        foreach (var action in ev) {
-            if (action.CodeId != null)
-                objList.Add($"  Event: {action.CodeId.Name.Content}");
-        }
-    }
+    objLines.Add($"\n=== {obj.Name.Content} ===");
+    foreach (var evList in obj.Events)
+        foreach (var ev in evList)
+            if (ev.CodeId != null)
+                objLines.Add($"  {ev.CodeId.Name.Content}");
 }
-File.WriteAllLines("output/data/objects.txt", objList);
+File.WriteAllLines(
+    Path.Combine(outputDir, "data", "objects.txt"),
+    objLines
+);
 
-// 4. All Strings
-Console.WriteLine("Exporting strings...");
-var strings = Data.Strings.Select(s => s.Content);
-File.WriteAllLines("output/data/strings.txt", strings);
+// Zip semua
+System.IO.Compression.ZipFile.CreateFromDirectory(
+    outputDir, "hasil_decompile.zip"
+);
 
-// 5. Global Variables
-Console.WriteLine("Exporting global init...");
-var globals = new List<string>();
-foreach (var code in Data.Code) {
-    if (code.Name.Content.Contains("global") || 
-        code.Name.Content.Contains("Global")) {
-        try {
-            var decompiled = new Decompiler(Data).Decompile(code);
-            globals.Add($"=== {code.Name.Content} ===\n{decompiled}\n");
-        } catch {}
-    }
-}
-File.WriteAllLines("output/data/globals.txt", globals);
-
-// 6. Room list
-Console.WriteLine("Exporting rooms...");
-var rooms = Data.Rooms.Select(r => r.Name.Content);
-File.WriteAllLines("output/data/rooms.txt", rooms);
-
-// 7. Sound list
-Console.WriteLine("Exporting sounds...");
-var sounds = Data.Sounds.Select(s => s.Name.Content);
-File.WriteAllLines("output/data/sounds.txt", sounds);
-
-Console.WriteLine("Zipping output...");
-
-// Zip semua output
-ZipFile.CreateFromDirectory("output", "hasil_decompile.zip");
-
-Console.WriteLine("Done! hasil_decompile.zip ready!");
+Console.WriteLine("DONE! hasil_decompile.zip ready!");
