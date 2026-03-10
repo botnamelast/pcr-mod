@@ -1,10 +1,10 @@
-name: Mod PCR APK
+name: Cek Smali
 
 on:
   workflow_dispatch:
 
 jobs:
-  mod:
+  smali:
     runs-on: ubuntu-latest
     
     steps:
@@ -13,10 +13,8 @@ jobs:
     - name: Download APK
       run: |
         curl -L -o pcr.apk https://github.com/botnamelast/pcr-mod/releases/download/kontol/pcr.apk.zip
-        file pcr.apk
-        ls -lh pcr.apk
 
-    - name: Install Java
+    - name: Install Java + APKTool
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
@@ -30,40 +28,18 @@ jobs:
         chmod +x apktool
         sudo mv apktool /usr/local/bin/
         sudo mv apktool.jar /usr/local/bin/
-        apktool --version
 
     - name: Decompile APK
       run: |
         apktool d pcr.apk -o pcr_decompiled/ --force
-        echo "=== Root ==="
-        ls pcr_decompiled/
-        echo "=== Smali ==="
-        ls pcr_decompiled/smali/ || echo "No smali folder"
-        echo "=== Assets ==="
-        ls pcr_decompiled/assets/
-        echo "=== Lib ==="
-        ls pcr_decompiled/lib/ || echo "No lib folder"
 
-    - name: Cek struktur smali
+    - name: Cek RunnerActivity
       run: |
-        echo "=== Smali folders ==="
-        ls pcr_decompiled/smali/
-        echo ""
-        echo "=== Smali count ==="
-        find pcr_decompiled/smali/ -name "*.smali" | wc -l
-        echo ""
-        echo "=== Cek MainActivity ==="
-        find pcr_decompiled/ -name "MainActivity.smali"
-        echo ""
-        echo "=== Cek GameActivity ==="
-        find pcr_decompiled/ -name "*Activity*.smali"
-        echo ""
-        echo "=== AndroidManifest ==="
-        cat pcr_decompiled/AndroidManifest.xml
+        cat pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/RunnerActivity.smali
 
-    - name: Upload hasil decompile
+    - name: Upload RunnerActivity
       uses: actions/upload-artifact@v4
       with:
-        name: pcr-decompiled
-        path: pcr_decompiled/
+        name: runner-activity
+        path: pcr_decompiled/smali/com/StudioFurukawa/PixelCarRacer/
         retention-days: 7
