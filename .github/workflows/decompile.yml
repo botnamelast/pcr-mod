@@ -25,16 +25,12 @@ jobs:
       run: |
         git clone --recurse-submodules https://github.com/UnderminersTeam/UndertaleModTool.git utmt-src
 
-    # Patch UTMT - tambah debug info saat crash
     - name: Patch UTMT source
       run: |
         $file = "utmt-src/UndertaleModLib/UndertaleChunks.cs"
         $content = Get-Content $file -Raw
-        
-        # Tambah verbose logging di loop chunk scanner
         $old = 'lastChunk = reader.ReadChars(4);'
         $new = 'lastChunk = reader.ReadChars(4); Console.WriteLine($"Scanning chunk: {lastChunk} at pos {reader.Position}");'
-        
         $content = $content.Replace($old, $new)
         Set-Content $file $content
         echo "Patched!"
@@ -44,21 +40,19 @@ jobs:
         cd utmt-src
         dotnet publish UndertaleModCli -c Release -o ../utmt-build
 
-    - name: Test info verbose
-      run: |
-        cd utmt-build
-        ./UndertaleModCli.exe info ../game.droid
-      continue-on-error: true
-
     - name: Run Decompile
       run: |
         cd utmt-build
         ./UndertaleModCli.exe load ../game.droid --scripts ../decompile.csx
+        echo "=== Cek utmt-build ==="
+        dir
+        echo "=== Cek root ==="
+        dir ..
       continue-on-error: true
 
     - name: Upload hasil
       uses: actions/upload-artifact@v4
       with:
         name: hasil-decompile
-        path: utmt-build/hasil_decompile.zip
+        path: hasil_decompile.zip
         retention-days: 7
