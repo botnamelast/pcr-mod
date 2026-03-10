@@ -9,41 +9,51 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Rename files
       shell: cmd
       run: |
         rename game.partaa.zip game.partaa
         rename game.partab.zip game.partab
         rename game.partac.zip game.partac
-    
+
     - name: Merge split files
       shell: cmd
       run: |
         copy /b game.partaa+game.partab+game.partac game.droid
         dir game.droid
 
-    - name: Download UTMT 0.7.0
-      run: |
-        curl -L -o utmt.zip https://github.com/UnderminersTeam/UndertaleModTool/releases/download/0.7.0.0/UTMT_CLI_v0.7.0.0-Windows.zip
-        Expand-Archive utmt.zip -DestinationPath utmt/
-        dir utmt/
+    # Clone dan compile UTMT dari source!
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
 
-    - name: Test info verbose
+    - name: Clone UTMT source
       run: |
-        cd utmt
-        ./UndertaleModCli.exe info ../game.droid --verbose
+        git clone --recurse-submodules https://github.com/UnderminersTeam/UndertaleModTool.git utmt-src
+
+    - name: Build UTMT CLI
+      run: |
+        cd utmt-src
+        dotnet publish UndertaleModCli -c Release -o ../utmt-build
+        dir ../utmt-build
+
+    - name: Test info
+      run: |
+        cd utmt-build
+        ./UndertaleModCli.exe info ../game.droid
       continue-on-error: true
 
-    - name: Run Decompile verbose
+    - name: Run Decompile
       run: |
-        cd utmt
-        ./UndertaleModCli.exe load ../game.droid --scripts ../decompile.csx --verbose
+        cd utmt-build
+        ./UndertaleModCli.exe load ../game.droid --scripts ../decompile.csx
       continue-on-error: true
 
     - name: Upload hasil
       uses: actions/upload-artifact@v4
       with:
         name: hasil-decompile
-        path: utmt/hasil_decompile.zip
+        path: utmt-build/hasil_decompile.zip
         retention-days: 7
