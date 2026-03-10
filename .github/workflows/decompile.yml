@@ -1,6 +1,7 @@
 name: Decompile PCR
 
-on: [push]
+on:
+  workflow_dispatch:
 
 jobs:
   decompile:
@@ -8,6 +9,16 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
+    
+    # Rename .zip jadi tanpa ekstensi
+    - name: Rename files
+      shell: cmd
+      run: |
+        rename game.partaa.zip game.partaa
+        rename game.partab.zip game.partab
+        rename game.partac.zip game.partac
+        echo Rename done!
+        dir game.part*
     
     # Gabung split files
     - name: Merge split files
@@ -17,7 +28,7 @@ jobs:
         echo Merge done!
         dir game.droid
     
-    # Download UTMT CLI
+    # Download UTMT
     - name: Download UTMT
       run: |
         curl -L -o utmt.zip https://github.com/UndermineDev/UndertaleModTool/releases/latest/download/UndertaleModToolCLI.zip
@@ -30,7 +41,7 @@ jobs:
         cd utmt
         ./UndertaleModToolCLI.exe ../game.droid ../decompile.csx
     
-    # Upload zip sebagai artifact
+    # Upload hasil
     - name: Upload hasil
       uses: actions/upload-artifact@v3
       with:
