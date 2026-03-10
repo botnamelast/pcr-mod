@@ -14,23 +14,33 @@ jobs:
       run: |
         curl -L -o pcr.apk.zip https://github.com/botnamelast/pcr-mod/releases/download/kontol/pcr.apk.zip
         mv pcr.apk.zip pcr.apk
+        ls -lh pcr.apk
 
-    - name: Install APKTool
+    - name: Install Java + APKTool
       run: |
+        sudo apt-get install -y default-jdk
         wget -q https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool
         wget -q https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar
         chmod +x apktool
         sudo mv apktool /usr/local/bin/
         sudo mv apktool_2.9.3.jar /usr/local/bin/apktool.jar
+        apktool --version
 
     - name: Decompile APK
       run: |
         apktool d pcr.apk -o pcr_decompiled/
+        echo "=== Root ==="
         ls pcr_decompiled/
+        echo "=== Smali ==="
+        ls pcr_decompiled/smali/
+        echo "=== Assets ==="
+        ls pcr_decompiled/assets/
+        echo "=== Lib ==="
+        ls pcr_decompiled/lib/
 
-    - name: Upload smali
+    - name: Upload hasil decompile
       uses: actions/upload-artifact@v4
       with:
-        name: pcr-smali
+        name: pcr-decompiled
         path: pcr_decompiled/
         retention-days: 7
