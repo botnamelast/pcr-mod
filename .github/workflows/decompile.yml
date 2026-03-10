@@ -10,20 +10,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Rename files
-      shell: cmd
+    - name: Download game.droid
       run: |
-        rename game.partaa.zip game.partaa
-        rename game.partab.zip game.partab
-        rename game.partac.zip game.partac
-
-    - name: Merge split files
-      shell: cmd
-      run: |
-        copy /b game.partaa+game.partab+game.partac game.droid
+        curl -L -o game.droid.zip https://github.com/botnamelast/pcr-mod/releases/download/kontol/game_patched.droid.zip
+        Move-Item game.droid.zip game.droid
         dir game.droid
 
-    # Clone dan compile UTMT dari source!
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -37,7 +29,6 @@ jobs:
       run: |
         cd utmt-src
         dotnet publish UndertaleModCli -c Release -o ../utmt-build
-        dir ../utmt-build
 
     - name: Test info
       run: |
