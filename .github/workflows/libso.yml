@@ -1,0 +1,56 @@
+name: Analyze libyoyo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download APK
+      run: |
+        curl -L -o pcr.apk https://github.com/botnamelast/pcr-mod/releases/download/kontol/pcr.apk.zip
+        ls -lh pcr.apk
+
+    - name: Extract libyoyo.so
+      run: |
+        unzip -o pcr.apk lib/arm64-v8a/libyoyo.so
+        ls -lh lib/arm64-v8a/libyoyo.so
+        
+    - name: Cek ukuran .so
+      run: |
+        unzip -o pcr.apk lib/arm64-v8a/libyoyo.so
+        ls -lh lib/arm64-v8a/
+        file lib/arm64-v8a/libyoyo.so
+
+    - name: Install Java + Ghidra
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Download Ghidra
+      run: |
+        curl -L -o ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.1.2_build/ghidra_11.1.2_PUBLIC_20240709.zip
+        unzip -q ghidra.zip
+        ls ghidra_11.1.2_PUBLIC/
+
+    - name: Analyze libyoyo.so
+      run: |
+        mkdir -p ghidra_project
+        ghidra_11.1.2_PUBLIC/support/analyzeHeadless \
+          ghidra_project MyProject \
+          -import lib/arm64-v8a/libyoyo.so \
+          -analysisTimeoutPerFile 300 \
+          -postScript ExportSymbols.java \
+          2>&1 | tail -50
+
+    - name: Upload libyoyo.so
+      uses: actions/upload-artifact@v4
+      with:
+        name: libyoyo
+        path: lib/arm64-v8a/libyoyo.so
+        retention-days: 7
