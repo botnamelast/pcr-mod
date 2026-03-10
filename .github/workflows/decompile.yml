@@ -28,10 +28,11 @@ jobs:
         echo Merge done!
         dir game.droid
     
-    # Download UTMT
+    # Download UTMT CLI - URL DIPERBAIKI!
     - name: Download UTMT
       run: |
-        curl -L -o utmt.zip https://github.com/UndermineDev/UndertaleModTool/releases/latest/download/UndertaleModToolCLI.zip
+        curl -L -o utmt.zip https://github.com/UnderminersTeam/UndertaleModTool/releases/latest/download/UTMT_CLI.zip
+        dir utmt.zip
         Expand-Archive utmt.zip -DestinationPath utmt/
         dir utmt/
     
@@ -41,7 +42,7 @@ jobs:
         cd utmt
         ./UndertaleModToolCLI.exe ../game.droid ../decompile.csx
     
-    # Upload hasil - GANTI KE V4!
+    # Upload hasil
     - name: Upload hasil
       uses: actions/upload-artifact@v4
       with:
