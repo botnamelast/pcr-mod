@@ -54,5 +54,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: hasil-decompile
-        path: hasil_decompile.zip
+        path: utmt-build/hasil_decompile.zip
         retention-days: 7
