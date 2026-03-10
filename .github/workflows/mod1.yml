@@ -95,9 +95,9 @@ jobs:
       run: |
         cd smali-2.5.2
         chmod +x gradlew
-        ./gradlew :util:build -x test
-        ./gradlew :dexlib2:build -x test
-        ./gradlew :baksmali:jar -x test
+        ./gradlew :util:jar -x test
+        ./gradlew :dexlib2:jar -x test
+        ./gradlew :baksmali:fatJar -x test
         echo "=== Hasil build ==="
         ls baksmali/build/libs/
 
