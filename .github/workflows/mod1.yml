@@ -272,20 +272,22 @@ jobs:
         echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > mod.keystore
         ls -lh mod.keystore
 
-        curl -L -o apksigner.jar \
-          "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar"
+        # Pakai apksigner dari build-tools (sudah ada dari job sebelumnya)
+        # Download build-tools lagi
+        curl -L -o build-tools.zip \
+          "https://dl.google.com/android/repository/build-tools_r34-linux.zip"
+        unzip -q build-tools.zip -d build-tools/
 
-        mkdir -p output_signed
-        java -jar apksigner.jar \
-          --apks pcr_mod_unsigned.apk \
+        build-tools/android-14/apksigner sign \
           --ks mod.keystore \
-          --ksPass ${{ secrets.KEYSTORE_PASS }} \
-          --ksKeyPass ${{ secrets.KEYSTORE_PASS }} \
-          --ksAlias ${{ secrets.KEY_ALIAS }} \
-          --out output_signed/
-          
+          --ks-pass pass:${{ secrets.KEYSTORE_PASS }} \
+          --ks-key-alias ${{ secrets.KEY_ALIAS }} \
+          --key-pass pass:${{ secrets.KEYSTORE_PASS }} \
+          --out pcr_mod_signed.apk \
+          pcr_mod_unsigned.apk
+
         echo "=== APK Signed ==="
-        ls -lh output_signed/
+        ls -lh pcr_mod_signed.apk
         
     - name: Upload APK Hasil
       uses: actions/upload-artifact@v4
