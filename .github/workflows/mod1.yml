@@ -1,4 +1,4 @@
-name: Build PCR Mod APK
+name: mod 3job👍
 
 on:
   workflow_dispatch:
@@ -95,7 +95,9 @@ jobs:
       run: |
         cd smali-2.5.2
         chmod +x gradlew
-        ./gradlew :baksmali:build -x test
+        ./gradlew :util:build -x test
+        ./gradlew :dexlib2:build -x test
+        ./gradlew :baksmali:jar -x test
         echo "=== Hasil build ==="
         ls baksmali/build/libs/
 
@@ -280,4 +282,3 @@ jobs:
         name: PCR-Mod-APK
         path: pcr_mod_signed.apk
         retention-days: 7
-        
