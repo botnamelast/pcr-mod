@@ -1,0 +1,13 @@
+# Patch untuk DemoRenderer.smali
+# Inject AutoShift.tick() di onDrawFrame setelah :cond_3
+# Cari baris ini dan tambahkan invoke setelahnya
+
+FIND:
+    .line 400
+    :cond_3
+
+INSERT_AFTER:
+    # === PCR MOD: AutoShift tick ===
+    invoke-static {}, Lcom/StudioFurukawa/PixelCarRacer/AutoShift;->tick()V
+    # === END PCR MOD ==
+    =
