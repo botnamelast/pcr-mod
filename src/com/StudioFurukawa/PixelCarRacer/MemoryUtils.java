@@ -142,7 +142,6 @@ public class MemoryUtils {
 
     // Helper baca car speed
     public static float getCarSpeed() {
-        return readFloat(OFF_
-                         CAR_SPEED);
+        return readFloat(OFF_CAR_SPEED);
     }
 }
