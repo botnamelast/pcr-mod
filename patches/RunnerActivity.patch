@@ -1,0 +1,12 @@
+# Patch untuk RunnerActivity.smali
+# Inject ModMenu.attach() di onCreate
+# Cari baris ini dan tambahkan invoke setelahnya
+
+FIND:
+    sput-object p0, Lcom/StudioFurukawa/PixelCarRacer/RunnerActivity;->CurrentActivity:Lcom/StudioFurukawa/PixelCarRacer/RunnerActivity;
+
+INSERT_AFTER:
+    # === PCR MOD: Attach ModMenu ===
+    invoke-static {p0}, Lcom/StudioFurukawa/PixelCarRacer/ModMenu;->attach(Landroid/content/Context;)V
+    # === END PCR MOD ==
+    =
