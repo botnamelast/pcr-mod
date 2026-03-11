@@ -533,4 +533,43 @@ public class ModMenu {
         if (step >= 1f) {
             tvVal.setText(String.valueOf((int) initial));
         } else {
-            tvVa
+            tvVal.setText(String.format("%.2f", initial));
+        }
+        tvVal.setTextColor(Color.parseColor("#FFD700"));
+        tvVal.setTextSize(12f);
+        tvVal.setTypeface(null, Typeface.BOLD);
+        tvVal.setMinWidth(80);
+        tvVal.setGravity(Gravity.END);
+
+        row.addView(tvLabel);
+        row.addView(tvVal);
+
+        SeekBar seekBar = new SeekBar(ctx);
+        int steps = (int)((max - min) / step);
+        seekBar.setMax(steps);
+        seekBar.setProgress((int)((initial - min) / step));
+        seekBar.setOnSeekBarChangeListener(
+            new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar sb,
+                    int progress, boolean fromUser) {
+                float val = min + (progress * step);
+                if (step >= 1f) {
+                    tvVal.setText(String.valueOf((int) val));
+                } else {
+                    tvVal.setText(String.format("%.2f", val));
+                }
+                cb.on(val);
+            }
+            public void onStartTrackingTouch(SeekBar sb) {}
+            public void onStopTrackingTouch(SeekBar sb) {}
+        });
+
+        col.addView(row);
+        col.addView(seekBar);
+        return col;
+    }
+
+    // === CALLBACKS ===
+    interface ToggleCB { void on(boolean val); }
+    interface SliderCB { void on(float val); }
+}
