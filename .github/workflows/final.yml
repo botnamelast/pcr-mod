@@ -30,9 +30,9 @@ jobs:
           -cp android.jar \
           -d compiled_classes \
           src/com/StudioFurukawa/PixelCarRacer/MemoryUtils.java \
+          src/com/StudioFurukawa/PixelCarRacer/ReportLog.java \
           src/com/StudioFurukawa/PixelCarRacer/AutoShift.java \
           src/com/StudioFurukawa/PixelCarRacer/ModMenu.java
-
         echo "=== Compile selesai ==="
         find compiled_classes -name "*.class"
 
