@@ -3,20 +3,20 @@ package com.StudioFurukawa.PixelCarRacer;
 import android.content.Context;
 import android.graphics.*;
 import android.os.Handler;
+import android.util.Log;
 import android.view.*;
 import android.widget.*;
 
 public class ModMenu {
 
     // === SETTINGS ===
-    public static boolean modEnabled       = false;
+    public static boolean modEnabled      = false;
     public static boolean autoShiftEnabled = false;
-    public static boolean nosEnabled       = false;
-    public static int shiftMode            = 0; // 0=AUTO 1=MANUAL
+    public static boolean nosButtonEnabled = false;
+    public static int shiftMode           = 0; // 0=AUTO 1=MANUAL
 
     // AUTO mode
-    public static float shiftRPM   = 9300f;
-    public static float finalDrive = 5.00f;
+    public static float shiftRPM  = 9300f;
 
     // MANUAL mode per gear
     public static float shift1to2 = 9300f;
@@ -25,10 +25,23 @@ public class ModMenu {
     public static float shift4to5 = 9500f;
     public static float shift5to6 = 9500f;
 
+    // Gear ratios input user
+    public static float gear1     = 4.00f;
+    public static float gear2     = 2.50f;
+    public static float gear3     = 1.80f;
+    public static float gear4     = 1.30f;
+    public static float gear5     = 1.00f;
+    public static float gear6     = 0.68f;
+    public static float finalDrive = 5.00f;
+
     // === UI STATE ===
     private static boolean isMinimized = false;
     private static float posX = 50f;
     private static float posY = 150f;
+
+    // === TICK THREAD ===
+    private static Thread tickThread = null;
+    private static volatile boolean threadRunning = false;
 
     // === UI REFS ===
     private static WindowManager windowManager;
@@ -40,16 +53,8 @@ public class ModMenu {
     private static LinearLayout panelManual;
     private static Button nosButton;
 
-    // === INDICATOR REFS ===
-    private static View ledRace;        // LED merah/hijau race status
-    private static TextView tvRaceStatus; // teks status
-    private static TextView tvDebugInfo;  // RPM/Gear debug realtime
-    private static Handler uiHandler;
-
-    // === ATTACH ===
     public static void attach(final Context context) {
-        uiHandler = new Handler(context.getMainLooper());
-        uiHandler.post(() -> {
+        new Handler(context.getMainLooper()).post(() -> {
             try {
                 windowManager = (WindowManager) context
                     .getSystemService(Context.WINDOW_SERVICE);
@@ -58,7 +63,7 @@ public class ModMenu {
 
                 WindowManager.LayoutParams params =
                     new WindowManager.LayoutParams(
-                        640,
+                        620,
                         WindowManager.LayoutParams.WRAP_CONTENT,
                         WindowManager.LayoutParams.TYPE_APPLICATION,
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -71,38 +76,50 @@ public class ModMenu {
                 windowManager.addView(modView, params);
                 modEnabled = true;
 
+                // === START TICK THREAD ===
+                startTickThread();
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
     }
 
-    // === UPDATE INDICATOR (dipanggil dari AutoShift.tick()) ===
-    public static void updateRaceIndicator(final boolean started,
-            final float rpm, final int gear) {
-        if (uiHandler == null) return;
-        uiHandler.post(() -> {
-            if (ledRace != null) {
-                ledRace.setBackgroundColor(started
-                    ? Color.parseColor("#00FF44")   // hijau = race on
-                    : Color.parseColor("#FF2222"));  // merah = belum
+    // === TICK THREAD ===
+    private static void startTickThread() {
+        if (tickThread != null && tickThread.isAlive()) return;
+
+        threadRunning = true;
+        tickThread = new Thread(() -> {
+            Log.d("PCRMOD", "Tick thread started!");
+            while (threadRunning) {
+                try {
+                    AutoShift.tick();
+                    Thread.sleep(16); // ~60fps
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Exception e) {
+                    Log.e("PCRMOD", "Tick error: " + e.getMessage());
+                }
             }
-            if (tvRaceStatus != null) {
-                tvRaceStatus.setText(started ? "RACING" : "IDLE");
-                tvRaceStatus.setTextColor(started
-                    ? Color.parseColor("#00FF44")
-                    : Color.parseColor("#FF2222"));
-            }
-            if (tvDebugInfo != null) {
-                tvDebugInfo.setText(
-                    "RPM: " + (int)rpm + "  |  GEAR: " + gear);
-            }
+            Log.d("PCRMOD", "Tick thread stopped!");
         });
+        tickThread.setDaemon(true);
+        tickThread.setName("PCRMod-Tick");
+        tickThread.start();
     }
 
-    // === BUILD UI ===
+    private static void stopTickThread() {
+        threadRunning = false;
+        if (tickThread != null) {
+            tickThread.interrupt();
+            tickThread = null;
+        }
+    }
+
     private static View buildUI(final Context ctx) {
 
+        // === ROOT ===
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.argb(230, 10, 10, 20));
@@ -114,10 +131,12 @@ public class ModMenu {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(0, 4, 0, 8);
 
+        // Icon dari assets/mod_logo.png
         ImageView icon = new ImageView(ctx);
         try {
             java.io.InputStream is = ctx.getAssets().open("mod_logo.png");
-            Bitmap bmp = BitmapFactory.decodeStream(is);
+            android.graphics.Bitmap bmp =
+                android.graphics.BitmapFactory.decodeStream(is);
             icon.setImageBitmap(bmp);
             is.close();
         } catch (Exception e) {
@@ -129,6 +148,7 @@ public class ModMenu {
         icon.setLayoutParams(iconLP);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
+        // Title
         TextView tvTitle = new TextView(ctx);
         tvTitle.setText("PCR MOD");
         tvTitle.setTextColor(Color.parseColor("#FFD700"));
@@ -137,8 +157,11 @@ public class ModMenu {
         tvTitle.setLayoutParams(new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
+        // Minimize
         Button btnMin = makeSmallBtn(ctx, "—",
             Color.argb(180, 60, 60, 60));
+
+        // Close
         Button btnClose = makeSmallBtn(ctx, "X",
             Color.argb(180, 180, 40, 40));
 
@@ -148,80 +171,38 @@ public class ModMenu {
         header.addView(btnClose);
 
         // === DIVIDER EMAS ===
-        View divGold = makeDivider(ctx, Color.parseColor("#FFD700"), 2);
+        View divGold = makeDivider(ctx,
+            Color.parseColor("#FFD700"), 2);
 
         // === CONTENT ===
         contentLayout = new LinearLayout(ctx);
         contentLayout.setOrientation(LinearLayout.VERTICAL);
         contentLayout.setPadding(0, 8, 0, 0);
 
-        // === RACE STATUS INDICATOR ===
-        LinearLayout statusRow = new LinearLayout(ctx);
-        statusRow.setOrientation(LinearLayout.HORIZONTAL);
-        statusRow.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams statusLP =
-            new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        statusLP.setMargins(0, 4, 0, 8);
-        statusRow.setLayoutParams(statusLP);
-
-        // LED bulat
-        ledRace = new View(ctx);
-        ledRace.setBackgroundColor(Color.parseColor("#FF2222"));
-        LinearLayout.LayoutParams ledLP =
-            new LinearLayout.LayoutParams(20, 20);
-        ledLP.setMargins(0, 0, 8, 0);
-        ledRace.setLayoutParams(ledLP);
-
-        tvRaceStatus = new TextView(ctx);
-        tvRaceStatus.setText("IDLE");
-        tvRaceStatus.setTextColor(Color.parseColor("#FF2222"));
-        tvRaceStatus.setTextSize(12f);
-        tvRaceStatus.setTypeface(null, Typeface.BOLD);
-        tvRaceStatus.setLayoutParams(new LinearLayout.LayoutParams(
-            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        // Debug RPM/Gear
-        tvDebugInfo = new TextView(ctx);
-        tvDebugInfo.setText("RPM: 0  |  GEAR: 0");
-        tvDebugInfo.setTextColor(Color.parseColor("#888888"));
-        tvDebugInfo.setTextSize(11f);
-
-        statusRow.addView(ledRace);
-        statusRow.addView(tvRaceStatus);
-        statusRow.addView(tvDebugInfo);
-        contentLayout.addView(statusRow);
-
-        contentLayout.addView(makeDivider(ctx,
-            Color.argb(60, 255, 255, 255), 1));
-
-        // === TOGGLE AUTO SHIFT ===
+        // -- Toggle AUTO SHIFT --
         contentLayout.addView(makeToggleRow(ctx,
             "AUTO SHIFT", autoShiftEnabled,
             (val) -> autoShiftEnabled = val));
 
-        // === TOGGLE NOS ===
+        // -- Toggle NOS BUTTON --
         contentLayout.addView(makeToggleRow(ctx,
-            "NOS BUTTON", nosEnabled,
+            "NOS BUTTON", nosButtonEnabled,
             (val) -> {
-                nosEnabled = val;
-                if (nosButton != null) {
-                    nosButton.setVisibility(
-                        val ? View.VISIBLE : View.GONE);
-                }
+                nosButtonEnabled = val;
+                nosButton.setVisibility(
+                    val ? View.VISIBLE : View.GONE);
             }));
 
         contentLayout.addView(makeDivider(ctx,
             Color.argb(80, 255, 255, 255), 1));
 
-        // === MODE SELECTOR ===
+        // -- Mode Selector --
         contentLayout.addView(makeModeSelector(ctx));
 
         contentLayout.addView(makeDivider(ctx,
             Color.argb(80, 255, 255, 255), 1));
 
-        // === PANEL AUTO ===
+        // -- Panel AUTO --
         panelAuto = new LinearLayout(ctx);
         panelAuto.setOrientation(LinearLayout.VERTICAL);
         panelAuto.addView(makeLabel(ctx, "AUTO MODE", "#FFD700"));
@@ -233,7 +214,7 @@ public class ModMenu {
             (val) -> finalDrive = val));
         contentLayout.addView(panelAuto);
 
-        // === PANEL MANUAL ===
+        // -- Panel MANUAL --
         panelManual = new LinearLayout(ctx);
         panelManual.setOrientation(LinearLayout.VERTICAL);
         panelManual.setVisibility(View.GONE);
@@ -255,15 +236,15 @@ public class ModMenu {
             (val) -> shift5to6 = val));
         contentLayout.addView(panelManual);
 
-        // === NOS BUTTON (hold) ===
+        // == NOS BUTTON ==
         nosButton = new Button(ctx);
-        nosButton.setText("💨  HOLD = ACTIVATE NOS");
+        nosButton.setText("ACTIVATE NOS");
         nosButton.setTextColor(Color.WHITE);
         nosButton.setBackgroundColor(Color.parseColor("#CC2200"));
         nosButton.setTextSize(13f);
         nosButton.setTypeface(null, Typeface.BOLD);
-        nosButton.setPadding(0, 20, 0, 20);
-        nosButton.setVisibility(View.GONE); // default hidden
+        nosButton.setPadding(0, 16, 0, 16);
+        nosButton.setVisibility(View.GONE);
         LinearLayout.LayoutParams nosLP =
             new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -274,14 +255,11 @@ public class ModMenu {
             if (e.getAction() == MotionEvent.ACTION_DOWN) {
                 MemoryUtils.setNOS(true);
                 nosButton.setBackgroundColor(
-                    Color.parseColor("#FF6600"));
-                nosButton.setText("💨  NOS ACTIVE!");
-            } else if (e.getAction() == MotionEvent.ACTION_UP
-                    || e.getAction() == MotionEvent.ACTION_CANCEL) {
+                    Color.parseColor("#FF4400"));
+            } else if (e.getAction() == MotionEvent.ACTION_UP) {
                 MemoryUtils.setNOS(false);
                 nosButton.setBackgroundColor(
                     Color.parseColor("#CC2200"));
-                nosButton.setText("💨  HOLD = ACTIVATE NOS");
             }
             return true;
         });
@@ -291,7 +269,7 @@ public class ModMenu {
         root.addView(divGold);
         root.addView(contentLayout);
 
-        // === DRAG ===
+        // === DRAG LISTENER ===
         root.setOnTouchListener(new View.OnTouchListener() {
             float dX, dY;
             public boolean onTouch(View v, MotionEvent e) {
@@ -315,7 +293,7 @@ public class ModMenu {
             }
         });
 
-        // === HEADER BUTTONS ===
+        // === BUTTON ACTIONS ===
         btnMin.setOnClickListener(v -> {
             isMinimized = !isMinimized;
             contentLayout.setVisibility(
@@ -326,6 +304,7 @@ public class ModMenu {
         btnClose.setOnClickListener(v -> {
             try {
                 modEnabled = false;
+                stopTickThread();
                 AutoShift.reset();
                 windowManager.removeView(modView);
             } catch (Exception e) {
@@ -336,7 +315,7 @@ public class ModMenu {
         return root;
     }
 
-    // === HELPERS ===
+    // === HELPER METHODS ===
 
     private static Button makeSmallBtn(Context ctx,
             String text, int bgColor) {
@@ -359,7 +338,8 @@ public class ModMenu {
         v.setBackgroundColor(color);
         LinearLayout.LayoutParams lp =
             new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, height);
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                height);
         lp.setMargins(0, 6, 0, 6);
         v.setLayoutParams(lp);
         return v;
@@ -387,13 +367,11 @@ public class ModMenu {
         LinearLayout row = new LinearLayout(ctx);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setBackgroundColor(Color.argb(40, 255, 255, 255));
-        row.setPadding(8, 10, 8, 10);
         LinearLayout.LayoutParams lp =
             new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 3, 0, 3);
+        lp.setMargins(0, 4, 0, 4);
         row.setLayoutParams(lp);
 
         TextView tv = new TextView(ctx);
@@ -403,32 +381,12 @@ public class ModMenu {
         tv.setLayoutParams(new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        // Pakai Button sebagai toggle (lebih visible dari Switch)
-        final boolean[] state = {initial};
-        Button btnToggle = new Button(ctx);
-        btnToggle.setText(initial ? "ON" : "OFF");
-        btnToggle.setTextSize(11f);
-        btnToggle.setTypeface(null, Typeface.BOLD);
-        btnToggle.setPadding(16, 4, 16, 4);
-        btnToggle.setBackgroundColor(initial
-            ? Color.parseColor("#00AA44")
-            : Color.parseColor("#555555"));
-        btnToggle.setTextColor(Color.WHITE);
-        LinearLayout.LayoutParams btnLP =
-            new LinearLayout.LayoutParams(100,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        btnToggle.setLayoutParams(btnLP);
-        btnToggle.setOnClickListener(v -> {
-            state[0] = !state[0];
-            btnToggle.setText(state[0] ? "ON" : "OFF");
-            btnToggle.setBackgroundColor(state[0]
-                ? Color.parseColor("#00AA44")
-                : Color.parseColor("#555555"));
-            cb.on(state[0]);
-        });
+        Switch sw = new Switch(ctx);
+        sw.setChecked(initial);
+        sw.setOnCheckedChangeListener((v, checked) -> cb.on(checked));
 
         row.addView(tv);
-        row.addView(btnToggle);
+        row.addView(sw);
         return row;
     }
 
@@ -493,14 +451,18 @@ public class ModMenu {
     private static void updateModeButtons() {
         if (btnModeAuto == null || btnModeManual == null) return;
         if (shiftMode == 0) {
-            btnModeAuto.setBackgroundColor(Color.parseColor("#FFD700"));
+            btnModeAuto.setBackgroundColor(
+                Color.parseColor("#FFD700"));
             btnModeAuto.setTextColor(Color.BLACK);
-            btnModeManual.setBackgroundColor(Color.argb(150, 50, 50, 50));
+            btnModeManual.setBackgroundColor(
+                Color.argb(150, 50, 50, 50));
             btnModeManual.setTextColor(Color.WHITE);
         } else {
-            btnModeManual.setBackgroundColor(Color.parseColor("#FFD700"));
+            btnModeManual.setBackgroundColor(
+                Color.parseColor("#FFD700"));
             btnModeManual.setTextColor(Color.BLACK);
-            btnModeAuto.setBackgroundColor(Color.argb(150, 50, 50, 50));
+            btnModeAuto.setBackgroundColor(
+                Color.argb(150, 50, 50, 50));
             btnModeAuto.setTextColor(Color.WHITE);
         }
     }
@@ -570,6 +532,6 @@ public class ModMenu {
     }
 
     // === CALLBACKS ===
-    interface ToggleCB { void on(boolean val); }
-    interface SliderCB { void on(float val); }
+    interface ToggleCB  { void on(boolean val); }
+    interface SliderCB  { void on(float val); }
 }
