@@ -109,6 +109,9 @@ public class ModMenu {
                 // START TICK THREAD
                 startTickThread();
 
+                // START REPORT LOG THREAD (independent, selalu jalan)
+                ReportLog.startReportThread();
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -386,6 +389,7 @@ public class ModMenu {
             try {
                 modEnabled = false;
                 stopTickThread();
+                ReportLog.stopReportThread();
                 AutoShift.reset();
                 windowManager.removeView(modView);
             } catch (Exception e) {
