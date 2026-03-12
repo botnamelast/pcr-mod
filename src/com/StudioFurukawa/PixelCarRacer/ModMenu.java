@@ -540,4 +540,58 @@ public class ModMenu {
             String label, float min, float max,
             float initial, float step, SliderCB cb) {
         LinearLayout col = new LinearLayout(ctx);
-   
+        col.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams colLP =
+            new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        colLP.setMargins(0, 4, 0, 4);
+        col.setLayoutParams(colLP);
+
+        LinearLayout row = new LinearLayout(ctx);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView tvLabel = new TextView(ctx);
+        tvLabel.setText(label + ":");
+        tvLabel.setTextColor(Color.parseColor("#AAAAAA"));
+        tvLabel.setTextSize(12f);
+        tvLabel.setLayoutParams(new LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView tvVal = new TextView(ctx);
+        tvVal.setText(step >= 1f
+            ? String.valueOf((int) initial)
+            : String.format("%.2f", initial));
+        tvVal.setTextColor(Color.parseColor("#FFD700"));
+        tvVal.setTextSize(12f);
+        tvVal.setTypeface(null, Typeface.BOLD);
+        tvVal.setMinWidth(80);
+        tvVal.setGravity(Gravity.END);
+
+        row.addView(tvLabel);
+        row.addView(tvVal);
+
+        SeekBar seekBar = new SeekBar(ctx);
+        seekBar.setMax((int)((max - min) / step));
+        seekBar.setProgress((int)((initial - min) / step));
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                float val = min + (progress * step);
+                tvVal.setText(step >= 1f
+                    ? String.valueOf((int) val)
+                    : String.format("%.2f", val));
+                cb.on(val);
+            }
+            public void onStartTrackingTouch(SeekBar sb) {}
+            public void onStopTrackingTouch(SeekBar sb) {}
+        });
+
+        col.addView(row);
+        col.addView(seekBar);
+        return col;
+    }
+
+    interface ToggleCB { void on(boolean val); }
+    interface SliderCB { void on(float val); }
+}
