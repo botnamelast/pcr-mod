@@ -10,28 +10,28 @@ import android.widget.*;
 public class ModMenu {
 
     // === SETTINGS ===
-    public static boolean modEnabled      = false;
+    public static boolean modEnabled       = false;
     public static boolean autoShiftEnabled = false;
     public static boolean nosButtonEnabled = false;
-    public static int shiftMode           = 0; // 0=AUTO 1=MANUAL
+    public static int shiftMode            = 0; // 0=AUTO 1=MANUAL
 
     // AUTO mode
-    public static float shiftRPM  = 9300f;
+    public static float shiftRPM   = 9300f;
 
     // MANUAL mode per gear
-    public static float shift1to2 = 9300f;
-    public static float shift2to3 = 9400f;
-    public static float shift3to4 = 9400f;
-    public static float shift4to5 = 9500f;
-    public static float shift5to6 = 9500f;
+    public static float shift1to2  = 9300f;
+    public static float shift2to3  = 9400f;
+    public static float shift3to4  = 9400f;
+    public static float shift4to5  = 9500f;
+    public static float shift5to6  = 9500f;
 
-    // Gear ratios input user
-    public static float gear1     = 4.00f;
-    public static float gear2     = 2.50f;
-    public static float gear3     = 1.80f;
-    public static float gear4     = 1.30f;
-    public static float gear5     = 1.00f;
-    public static float gear6     = 0.68f;
+    // Gear ratios
+    public static float gear1      = 4.00f;
+    public static float gear2      = 2.50f;
+    public static float gear3      = 1.80f;
+    public static float gear4      = 1.30f;
+    public static float gear5      = 1.00f;
+    public static float gear6      = 0.68f;
     public static float finalDrive = 5.00f;
 
     // === UI STATE ===
@@ -43,6 +43,12 @@ public class ModMenu {
     private static Thread tickThread = null;
     private static volatile boolean threadRunning = false;
 
+    // === DEBUG INDICATOR REFS ===
+    private static TextView tvRaceStatus = null;
+    private static TextView tvRPMDebug   = null;
+    private static TextView tvGearDebug  = null;
+    private static View     ledIndicator = null;
+
     // === UI REFS ===
     private static WindowManager windowManager;
     private static View modView;
@@ -52,6 +58,30 @@ public class ModMenu {
     private static LinearLayout panelAuto;
     private static LinearLayout panelManual;
     private static Button nosButton;
+
+    // === UPDATE RACE INDICATOR (dipanggil dari AutoShift) ===
+    public static void updateRaceIndicator(boolean racing, float rpm, int gear) {
+        if (modView == null) return;
+        modView.post(() -> {
+            if (ledIndicator != null) {
+                ledIndicator.setBackgroundColor(
+                    racing ? Color.parseColor("#00FF00")
+                           : Color.parseColor("#FF0000"));
+            }
+            if (tvRaceStatus != null) {
+                tvRaceStatus.setText(racing ? "RACING" : "IDLE");
+                tvRaceStatus.setTextColor(
+                    racing ? Color.parseColor("#00FF00")
+                           : Color.parseColor("#AAAAAA"));
+            }
+            if (tvRPMDebug != null) {
+                tvRPMDebug.setText("RPM: " + (int) rpm);
+            }
+            if (tvGearDebug != null) {
+                tvGearDebug.setText("GEAR: " + gear);
+            }
+        });
+    }
 
     public static void attach(final Context context) {
         new Handler(context.getMainLooper()).post(() -> {
@@ -76,7 +106,7 @@ public class ModMenu {
                 windowManager.addView(modView, params);
                 modEnabled = true;
 
-                // === START TICK THREAD ===
+                // START TICK THREAD
                 startTickThread();
 
             } catch (Exception e) {
@@ -88,7 +118,6 @@ public class ModMenu {
     // === TICK THREAD ===
     private static void startTickThread() {
         if (tickThread != null && tickThread.isAlive()) return;
-
         threadRunning = true;
         tickThread = new Thread(() -> {
             Log.d("PCRMOD", "Tick thread started!");
@@ -131,12 +160,11 @@ public class ModMenu {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(0, 4, 0, 8);
 
-        // Icon dari assets/mod_logo.png
+        // Icon
         ImageView icon = new ImageView(ctx);
         try {
             java.io.InputStream is = ctx.getAssets().open("mod_logo.png");
-            android.graphics.Bitmap bmp =
-                android.graphics.BitmapFactory.decodeStream(is);
+            Bitmap bmp = BitmapFactory.decodeStream(is);
             icon.setImageBitmap(bmp);
             is.close();
         } catch (Exception e) {
@@ -157,13 +185,8 @@ public class ModMenu {
         tvTitle.setLayoutParams(new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        // Minimize
-        Button btnMin = makeSmallBtn(ctx, "—",
-            Color.argb(180, 60, 60, 60));
-
-        // Close
-        Button btnClose = makeSmallBtn(ctx, "X",
-            Color.argb(180, 180, 40, 40));
+        Button btnMin   = makeSmallBtn(ctx, "—", Color.argb(180, 60, 60, 60));
+        Button btnClose = makeSmallBtn(ctx, "X", Color.argb(180, 180, 40, 40));
 
         header.addView(icon);
         header.addView(tvTitle);
@@ -171,13 +194,73 @@ public class ModMenu {
         header.addView(btnClose);
 
         // === DIVIDER EMAS ===
-        View divGold = makeDivider(ctx,
-            Color.parseColor("#FFD700"), 2);
+        View divGold = makeDivider(ctx, Color.parseColor("#FFD700"), 2);
 
         // === CONTENT ===
         contentLayout = new LinearLayout(ctx);
         contentLayout.setOrientation(LinearLayout.VERTICAL);
         contentLayout.setPadding(0, 8, 0, 0);
+
+        // === DEBUG INDICATOR ROW ===
+        LinearLayout debugRow = new LinearLayout(ctx);
+        debugRow.setOrientation(LinearLayout.HORIZONTAL);
+        debugRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams debugLP =
+            new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        debugLP.setMargins(0, 0, 0, 8);
+        debugRow.setLayoutParams(debugLP);
+
+        // LED bulat
+        ledIndicator = new View(ctx);
+        LinearLayout.LayoutParams ledLP =
+            new LinearLayout.LayoutParams(18, 18);
+        ledLP.setMargins(0, 0, 8, 0);
+        ledIndicator.setLayoutParams(ledLP);
+        ledIndicator.setBackgroundColor(Color.parseColor("#FF0000"));
+
+        // Status text
+        tvRaceStatus = new TextView(ctx);
+        tvRaceStatus.setText("IDLE");
+        tvRaceStatus.setTextColor(Color.parseColor("#AAAAAA"));
+        tvRaceStatus.setTextSize(11f);
+        tvRaceStatus.setTypeface(null, Typeface.BOLD);
+        tvRaceStatus.setLayoutParams(new LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        // RPM debug
+        tvRPMDebug = new TextView(ctx);
+        tvRPMDebug.setText("RPM: 0");
+        tvRPMDebug.setTextColor(Color.parseColor("#FFD700"));
+        tvRPMDebug.setTextSize(10f);
+        LinearLayout.LayoutParams rpmLP =
+            new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        rpmLP.setMargins(8, 0, 0, 0);
+        tvRPMDebug.setLayoutParams(rpmLP);
+
+        // Gear debug
+        tvGearDebug = new TextView(ctx);
+        tvGearDebug.setText("GEAR: 0");
+        tvGearDebug.setTextColor(Color.parseColor("#FFD700"));
+        tvGearDebug.setTextSize(10f);
+        LinearLayout.LayoutParams gearLP =
+            new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        gearLP.setMargins(8, 0, 0, 0);
+        tvGearDebug.setLayoutParams(gearLP);
+
+        debugRow.addView(ledIndicator);
+        debugRow.addView(tvRaceStatus);
+        debugRow.addView(tvRPMDebug);
+        debugRow.addView(tvGearDebug);
+        contentLayout.addView(debugRow);
+
+        contentLayout.addView(makeDivider(ctx,
+            Color.argb(60, 255, 255, 255), 1));
 
         // -- Toggle AUTO SHIFT --
         contentLayout.addView(makeToggleRow(ctx,
@@ -254,12 +337,10 @@ public class ModMenu {
         nosButton.setOnTouchListener((v, e) -> {
             if (e.getAction() == MotionEvent.ACTION_DOWN) {
                 MemoryUtils.setNOS(true);
-                nosButton.setBackgroundColor(
-                    Color.parseColor("#FF4400"));
+                nosButton.setBackgroundColor(Color.parseColor("#FF4400"));
             } else if (e.getAction() == MotionEvent.ACTION_UP) {
                 MemoryUtils.setNOS(false);
-                nosButton.setBackgroundColor(
-                    Color.parseColor("#CC2200"));
+                nosButton.setBackgroundColor(Color.parseColor("#CC2200"));
             }
             return true;
         });
@@ -269,7 +350,7 @@ public class ModMenu {
         root.addView(divGold);
         root.addView(contentLayout);
 
-        // === DRAG LISTENER ===
+        // === DRAG ===
         root.setOnTouchListener(new View.OnTouchListener() {
             float dX, dY;
             public boolean onTouch(View v, MotionEvent e) {
@@ -315,10 +396,8 @@ public class ModMenu {
         return root;
     }
 
-    // === HELPER METHODS ===
-
-    private static Button makeSmallBtn(Context ctx,
-            String text, int bgColor) {
+    // === HELPERS ===
+    private static Button makeSmallBtn(Context ctx, String text, int bgColor) {
         Button btn = new Button(ctx);
         btn.setText(text);
         btn.setTextColor(Color.WHITE);
@@ -332,24 +411,21 @@ public class ModMenu {
         return btn;
     }
 
-    private static View makeDivider(Context ctx,
-            int color, int height) {
+    private static View makeDivider(Context ctx, int color, int height) {
         View v = new View(ctx);
         v.setBackgroundColor(color);
         LinearLayout.LayoutParams lp =
             new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                height);
+                LinearLayout.LayoutParams.MATCH_PARENT, height);
         lp.setMargins(0, 6, 0, 6);
         v.setLayoutParams(lp);
         return v;
     }
 
-    private static TextView makeLabel(Context ctx,
-            String text, String hexColor) {
+    private static TextView makeLabel(Context ctx, String text, String hex) {
         TextView tv = new TextView(ctx);
         tv.setText(text);
-        tv.setTextColor(Color.parseColor(hexColor));
+        tv.setTextColor(Color.parseColor(hex));
         tv.setTextSize(11f);
         tv.setTypeface(null, Typeface.BOLD);
         LinearLayout.LayoutParams lp =
@@ -363,7 +439,6 @@ public class ModMenu {
 
     private static LinearLayout makeToggleRow(Context ctx,
             String label, boolean initial, ToggleCB cb) {
-
         LinearLayout row = new LinearLayout(ctx);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -408,12 +483,11 @@ public class ModMenu {
         tv.setLayoutParams(new LinearLayout.LayoutParams(
             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        btnModeAuto = new Button(ctx);
+        btnModeAuto   = new Button(ctx);
+        btnModeManual = new Button(ctx);
         btnModeAuto.setText("AUTO");
         btnModeAuto.setTextSize(11f);
         btnModeAuto.setPadding(12, 4, 12, 4);
-
-        btnModeManual = new Button(ctx);
         btnModeManual.setText("MANUAL");
         btnModeManual.setTextSize(11f);
         btnModeManual.setPadding(12, 4, 12, 4);
@@ -426,7 +500,6 @@ public class ModMenu {
             panelAuto.setVisibility(View.VISIBLE);
             panelManual.setVisibility(View.GONE);
         });
-
         btnModeManual.setOnClickListener(v -> {
             shiftMode = 1;
             updateModeButtons();
@@ -451,18 +524,14 @@ public class ModMenu {
     private static void updateModeButtons() {
         if (btnModeAuto == null || btnModeManual == null) return;
         if (shiftMode == 0) {
-            btnModeAuto.setBackgroundColor(
-                Color.parseColor("#FFD700"));
+            btnModeAuto.setBackgroundColor(Color.parseColor("#FFD700"));
             btnModeAuto.setTextColor(Color.BLACK);
-            btnModeManual.setBackgroundColor(
-                Color.argb(150, 50, 50, 50));
+            btnModeManual.setBackgroundColor(Color.argb(150, 50, 50, 50));
             btnModeManual.setTextColor(Color.WHITE);
         } else {
-            btnModeManual.setBackgroundColor(
-                Color.parseColor("#FFD700"));
+            btnModeManual.setBackgroundColor(Color.parseColor("#FFD700"));
             btnModeManual.setTextColor(Color.BLACK);
-            btnModeAuto.setBackgroundColor(
-                Color.argb(150, 50, 50, 50));
+            btnModeAuto.setBackgroundColor(Color.argb(150, 50, 50, 50));
             btnModeAuto.setTextColor(Color.WHITE);
         }
     }
@@ -470,68 +539,5 @@ public class ModMenu {
     private static LinearLayout makeSliderRow(Context ctx,
             String label, float min, float max,
             float initial, float step, SliderCB cb) {
-
         LinearLayout col = new LinearLayout(ctx);
-        col.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams colLP =
-            new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        colLP.setMargins(0, 4, 0, 4);
-        col.setLayoutParams(colLP);
-
-        LinearLayout row = new LinearLayout(ctx);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView tvLabel = new TextView(ctx);
-        tvLabel.setText(label + ":");
-        tvLabel.setTextColor(Color.parseColor("#AAAAAA"));
-        tvLabel.setTextSize(12f);
-        tvLabel.setLayoutParams(new LinearLayout.LayoutParams(
-            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView tvVal = new TextView(ctx);
-        if (step >= 1f) {
-            tvVal.setText(String.valueOf((int) initial));
-        } else {
-            tvVal.setText(String.format("%.2f", initial));
-        }
-        tvVal.setTextColor(Color.parseColor("#FFD700"));
-        tvVal.setTextSize(12f);
-        tvVal.setTypeface(null, Typeface.BOLD);
-        tvVal.setMinWidth(80);
-        tvVal.setGravity(Gravity.END);
-
-        row.addView(tvLabel);
-        row.addView(tvVal);
-
-        SeekBar seekBar = new SeekBar(ctx);
-        int steps = (int)((max - min) / step);
-        seekBar.setMax(steps);
-        seekBar.setProgress((int)((initial - min) / step));
-        seekBar.setOnSeekBarChangeListener(
-            new SeekBar.OnSeekBarChangeListener() {
-            public void onProgressChanged(SeekBar sb,
-                    int progress, boolean fromUser) {
-                float val = min + (progress * step);
-                if (step >= 1f) {
-                    tvVal.setText(String.valueOf((int) val));
-                } else {
-                    tvVal.setText(String.format("%.2f", val));
-                }
-                cb.on(val);
-            }
-            public void onStartTrackingTouch(SeekBar sb) {}
-            public void onStopTrackingTouch(SeekBar sb) {}
-        });
-
-        col.addView(row);
-        col.addView(seekBar);
-        return col;
-    }
-
-    // === CALLBACKS ===
-    interface ToggleCB  { void on(boolean val); }
-    interface SliderCB  { void on(float val); }
-}
+   
