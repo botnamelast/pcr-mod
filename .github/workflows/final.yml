@@ -141,7 +141,7 @@ jobs:
 
     - name: Install APKTool
       run: |
-        curl -L -o apktool.jar https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar
+        curl -L -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar
         echo '#!/bin/bash' > apktool.sh
         echo 'java -jar /usr/local/bin/apktool.jar "$@"' >> apktool.sh
         chmod +x apktool.sh
